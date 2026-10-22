@@ -7,12 +7,14 @@
 #include <vector>
 
 #include "wasl/basis/dubiner_triangle.hpp"
-#include "wasl/basis/reference_element.hpp"
-#include "wasl/dg/euler_triangle_residual.hpp"
+#include "wasl/basis/mode_count.hpp"
+#include "wasl/dg/euler/triangle_residual.hpp"
 #include "wasl/flux/hllc.hpp"
-#include "wasl/mesh/msh_reader.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/triangle/build_triangle_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
+#include "wasl/quadrature/triangle_edge_rules.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace {
 
@@ -85,7 +87,7 @@ std::vector<double> project(const wasl::TriangleMesh &mesh, int polynomial_order
   std::vector<double> coefficients(wasl::Euler::variable_count * mode_count * element_count, 0.0);
   std::vector<double> basis(mode_count);
   for (std::size_t element = 0; element < element_count; ++element) {
-    const auto map = wasl::triangle_element_map(mesh, element);
+    const auto map = wasl::element_map(mesh, element);
     for (int q = 0; q < rule.size(); ++q) {
       double x = 0.0;
       double y = 0.0;
@@ -110,7 +112,7 @@ std::vector<double> exact_boundary(const wasl::TriangleMesh &mesh, int polynomia
     const auto &face = mesh.faces[face_index];
     if (face.right_element != wasl::invalid_element)
       continue;
-    const auto map = wasl::triangle_element_map(mesh, face.left_element);
+    const auto map = wasl::element_map(mesh, face.left_element);
     const auto &rule = rules[static_cast<std::size_t>(face.left_local_edge)];
     for (int q = 0; q < edge_points; ++q) {
       double x = 0.0;
@@ -164,7 +166,7 @@ double density_error(const wasl::TriangleMesh &mesh, int polynomial_order,
   std::vector<double> basis(mode_count);
   double squared_error = 0.0;
   for (std::size_t element = 0; element < element_count; ++element) {
-    const auto map = wasl::triangle_element_map(mesh, element);
+    const auto map = wasl::element_map(mesh, element);
     for (int q = 0; q < rule.size(); ++q) {
       double x = 0.0;
       double y = 0.0;

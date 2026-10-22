@@ -5,7 +5,8 @@
 
 #include <cmath>
 
-#include "wasl/quadrature/quadrature.hpp"
+#include "wasl/quadrature/endpoint_rule.hpp"
+#include "wasl/quadrature/gauss_legendre.hpp"
 
 namespace {
 

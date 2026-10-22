@@ -6,23 +6,88 @@ if(WASL_ENABLE_MPI)
   find_package(MPI REQUIRED)
 endif()
 
-add_library(wasl_core STATIC
-  src/case/coefficient_layout.cpp
-  src/case/euler_case.cpp
-  src/case/initial_state.cpp
-  src/case/periodic_boundary.cpp
-  src/case/prepared_mesh.cpp
-  src/case/scalar_advection_case.cpp
-  src/case/simulation.cpp
-  src/case/validation.cpp
-  src/mesh/line_mesh.cpp
-  src/mesh/msh_reader.cpp
-  src/mesh/partition.cpp
-  src/mesh/triangle_mesh.cpp
-  src/communication/halo_exchange.cpp
-  src/io/case_io.cpp
+set(WASL_MESH_SOURCES
+  src/mesh/line/build_line_mesh.cpp
+  src/mesh/line/line_mesh.cpp
+  src/mesh/msh/msh_document.cpp
+  src/mesh/msh/msh_node_lookup.cpp
+  src/mesh/msh/msh_reader.cpp
+  src/mesh/msh/msh_sections.cpp
+  src/mesh/partition/partition.cpp
+  src/mesh/partition/rank_local_line_mesh.cpp
+  src/mesh/prepared/mesh_from_prepared.cpp
+  src/mesh/prepared/owned_mesh_slice.cpp
+  src/mesh/prepared/prepare_mesh.cpp
+  src/mesh/prepared/prepared_mesh_validation.cpp
+  src/mesh/prepared/prepared_node_table.cpp
+  src/mesh/prepared/prepared_physical_names.cpp
+  src/mesh/triangle/boundary_edge_tags.cpp
+  src/mesh/triangle/build_triangle_mesh.cpp
+  src/mesh/triangle/triangle_mesh.cpp
 )
-target_include_directories(wasl_core PUBLIC include)
+set(WASL_IO_SOURCES
+  src/io/checkpoint.cpp
+  src/io/checkpoint_file.cpp
+  src/io/checkpoint_reassembly.cpp
+  src/io/history_csv.cpp
+  src/io/output_names.cpp
+  src/io/prepared_mesh_file.cpp
+  src/io/pvd_writer.cpp
+  src/io/pvtu_writer.cpp
+  src/io/text_output.cpp
+  src/io/vtu_writer.cpp
+)
+set(WASL_BOUNDARIES_SOURCES
+  src/boundaries/line_euler_exterior.cpp
+  src/boundaries/periodic_triangle_trace.cpp
+)
+set(WASL_TIME_SOURCES
+  src/time/cfl_timestep.cpp
+)
+set(WASL_LIMITING_SOURCES
+  src/limiting/euler_limiter_stencil_line.cpp
+  src/limiting/euler_limiter_stencil_triangle.cpp
+  src/limiting/euler_modal_limiter.cpp
+)
+set(WASL_COMMUNICATION_SOURCES
+  src/communication/halo_schedule.cpp
+  src/communication/in_process_halo_exchange.cpp
+  src/communication/mpi_session.cpp
+)
+set(WASL_CASE_SOURCES
+  src/case/case_mesh.cpp
+  src/case/case_validation.cpp
+  src/case/euler_case.cpp
+  src/case/euler_diagnostics.cpp
+  src/case/euler_line.cpp
+  src/case/euler_state_operations.cpp
+  src/case/euler_triangle.cpp
+  src/case/initial_regions.cpp
+  src/case/initial_state.cpp
+  src/case/line_boundary_resolution.cpp
+  src/case/mpi_run_directory.cpp
+  src/case/scalar_advection_case.cpp
+  src/case/scalar_advection_distributed.cpp
+  src/case/scalar_advection_line.cpp
+  src/case/scalar_advection_triangle.cpp
+  src/case/scalar_coefficient_layout.cpp
+  src/case/scalar_diagnostics.cpp
+  src/case/scalar_state_operations.cpp
+  src/case/serial_case_runner.cpp
+)
+
+add_library(wasl_core STATIC
+  ${WASL_MESH_SOURCES}
+  ${WASL_IO_SOURCES}
+  ${WASL_BOUNDARIES_SOURCES}
+  ${WASL_TIME_SOURCES}
+  ${WASL_LIMITING_SOURCES}
+  ${WASL_COMMUNICATION_SOURCES}
+  ${WASL_CASE_SOURCES}
+)
+# Public headers live under include/wasl; private headers sit beside their
+# sources and are included relative to src.
+target_include_directories(wasl_core PUBLIC include PRIVATE src)
 target_link_libraries(wasl_core PUBLIC HDF5::HDF5)
 if(WASL_ENABLE_MPI)
   target_compile_definitions(wasl_core PRIVATE WASL_ENABLE_MPI OMPI_SKIP_MPICXX)
@@ -36,119 +101,65 @@ target_compile_options(wasl_core PUBLIC
 add_executable(wasl-smoke src/smoke.cpp)
 target_link_libraries(wasl-smoke PRIVATE wasl_core)
 
-
 if(BUILD_TESTING)
-  # Core mode-count smoke test.
-  add_executable(wasl-core-test tests/basis/reference_element_test.cpp)
-  target_link_libraries(wasl-core-test PRIVATE wasl_core)
-  add_test(NAME wasl.core COMMAND wasl-core-test)
+  # Each test is one executable named after its source file; extra arguments
+  # are passed to it on the command line.
+  function(wasl_add_test name source)
+    get_filename_component(stem "${source}" NAME_WE)
+    set(target "wasl-${stem}")
+    string(REPLACE "_" "-" target "${target}")
+    add_executable(${target} ${source})
+    target_link_libraries(${target} PRIVATE wasl_core)
+    add_test(NAME ${name} COMMAND ${target} ${ARGN})
+  endfunction()
 
-  # M1 numerical-kernel tests: basis, quadrature, geometry, and mesh.
-  add_executable(wasl-legendre-test tests/basis/legendre_test.cpp)
-  target_link_libraries(wasl-legendre-test PRIVATE wasl_core)
-  add_test(NAME wasl.legendre COMMAND wasl-legendre-test)
+  # M1 numerical kernels: basis, quadrature, geometry, and mesh.
+  wasl_add_test(wasl.core tests/basis/mode_count_test.cpp)
+  wasl_add_test(wasl.legendre tests/basis/legendre_test.cpp)
+  wasl_add_test(wasl.quadrature tests/quadrature/quadrature_test.cpp)
+  wasl_add_test(wasl.line-geometry tests/mesh/line_geometry_test.cpp)
+  wasl_add_test(wasl.line-mesh tests/mesh/line_mesh_test.cpp)
 
-  add_executable(wasl-quadrature-test tests/quadrature/quadrature_test.cpp)
-  target_link_libraries(wasl-quadrature-test PRIVATE wasl_core)
-  add_test(NAME wasl.quadrature COMMAND wasl-quadrature-test)
+  # M4 straight-sided triangle basis, quadrature, geometry, and topology.
+  wasl_add_test(wasl.basis.dubiner-triangle tests/basis/dubiner_triangle_test.cpp)
+  wasl_add_test(wasl.quadrature.triangle tests/quadrature/triangle_test.cpp)
+  wasl_add_test(wasl.triangle-geometry tests/mesh/triangle_geometry_test.cpp)
+  wasl_add_test(wasl.triangle-mesh tests/mesh/triangle_mesh_test.cpp)
 
-  add_executable(wasl-line-geometry-test tests/mesh/line_geometry_test.cpp)
-  target_link_libraries(wasl-line-geometry-test PRIVATE wasl_core)
-  add_test(NAME wasl.line-geometry COMMAND wasl-line-geometry-test)
+  # M8 partition ownership, ghost layer, and the MPI-free halo oracle.
+  wasl_add_test(wasl.mesh.partition tests/mesh/partition_test.cpp)
+  wasl_add_test(wasl.mpi.halo tests/communication/halo_exchange_test.cpp)
 
-  add_executable(wasl-line-mesh-test tests/mesh/line_mesh_test.cpp)
-  target_link_libraries(wasl-line-mesh-test PRIVATE wasl_core)
-  add_test(NAME wasl.line-mesh COMMAND wasl-line-mesh-test)
+  # M2/M5 equations and DG residuals.
+  wasl_add_test(wasl.scalar-advection tests/equations/scalar_advection_test.cpp)
+  wasl_add_test(wasl.euler tests/equations/euler_test.cpp)
+  wasl_add_test(wasl.dg.residual tests/dg/residual_test.cpp)
+  wasl_add_test(wasl.dg.triangle-residual tests/dg/triangle_residual_test.cpp)
+  wasl_add_test(wasl.dg.euler-triangle-residual tests/dg/euler_triangle_residual_test.cpp)
+  wasl_add_test(wasl.dg.euler-line-residual tests/dg/euler_line_residual_test.cpp)
 
-  # M4 straight-sided 2D triangle basis, quadrature, and geometry.
-  add_executable(wasl-dubiner-triangle-test tests/basis/dubiner_triangle_test.cpp)
-  target_link_libraries(wasl-dubiner-triangle-test PRIVATE wasl_core)
-  add_test(NAME wasl.basis.dubiner-triangle COMMAND wasl-dubiner-triangle-test)
+  # M6 limiting.
+  wasl_add_test(wasl.limiter.modal-decay tests/limiter/modal_decay_test.cpp)
+  wasl_add_test(wasl.limiter.simple-weno tests/limiter/simple_weno_test.cpp)
+  wasl_add_test(wasl.limiter.euler tests/limiter/euler_limiting_test.cpp)
+  wasl_add_test(wasl.limiter.line-stencil tests/limiter/euler_limiter_stencil_test.cpp)
 
-  add_executable(wasl-triangle-test tests/quadrature/triangle_test.cpp)
-  target_link_libraries(wasl-triangle-test PRIVATE wasl_core)
-  add_test(NAME wasl.quadrature.triangle COMMAND wasl-triangle-test)
-
-  add_executable(wasl-triangle-geometry-test tests/mesh/triangle_geometry_test.cpp)
-  target_link_libraries(wasl-triangle-geometry-test PRIVATE wasl_core)
-  add_test(NAME wasl.triangle-geometry COMMAND wasl-triangle-geometry-test)
-
-  add_executable(wasl-triangle-mesh-test tests/mesh/triangle_mesh_test.cpp)
-  target_link_libraries(wasl-triangle-mesh-test PRIVATE wasl_core)
-  add_test(NAME wasl.triangle-mesh COMMAND wasl-triangle-mesh-test)
-
-  # M8 deterministic partition ownership and one ghost-element layer.
-  add_executable(wasl-partition-test tests/mesh/partition_test.cpp)
-  target_link_libraries(wasl-partition-test PRIVATE wasl_core)
-  add_test(NAME wasl.mesh.partition COMMAND wasl-partition-test)
-
-  # M8 host-staged halo exchange oracle (MPI-free; single process).
-  add_executable(wasl-halo-exchange-test tests/communication/halo_exchange_test.cpp)
-  target_link_libraries(wasl-halo-exchange-test PRIVATE wasl_core)
-  add_test(NAME wasl.mpi.halo COMMAND wasl-halo-exchange-test)
-
-  # M2 scalar-advection equation and DG residual tests.
-  add_executable(wasl-scalar-advection-test tests/equations/scalar_advection_test.cpp)
-  target_link_libraries(wasl-scalar-advection-test PRIVATE wasl_core)
-  add_test(NAME wasl.scalar-advection COMMAND wasl-scalar-advection-test)
-
-  add_executable(wasl-euler-test tests/equations/euler_test.cpp)
-  target_link_libraries(wasl-euler-test PRIVATE wasl_core)
-  add_test(NAME wasl.euler COMMAND wasl-euler-test)
-
-  add_executable(wasl-residual-test tests/dg/residual_test.cpp)
-  target_link_libraries(wasl-residual-test PRIVATE wasl_core)
-  add_test(NAME wasl.dg.residual COMMAND wasl-residual-test)
-
-  add_executable(wasl-triangle-residual-test tests/dg/triangle_residual_test.cpp)
-  target_link_libraries(wasl-triangle-residual-test PRIVATE wasl_core)
-  add_test(NAME wasl.dg.triangle-residual COMMAND wasl-triangle-residual-test)
-
-  add_executable(wasl-euler-triangle-residual-test tests/dg/euler_triangle_residual_test.cpp)
-  target_link_libraries(wasl-euler-triangle-residual-test PRIVATE wasl_core)
-  add_test(NAME wasl.dg.euler-triangle-residual COMMAND wasl-euler-triangle-residual-test)
-
-  add_executable(wasl-euler-line-residual-test tests/dg/euler_line_residual_test.cpp)
-  target_link_libraries(wasl-euler-line-residual-test PRIVATE wasl_core)
-  add_test(NAME wasl.dg.euler-line-residual COMMAND wasl-euler-line-residual-test)
-
-  add_executable(wasl-euler-case-test tests/runtime/euler_case_test.cpp)
-  target_link_libraries(wasl-euler-case-test PRIVATE wasl_core)
-  add_test(NAME wasl.runtime.euler-case COMMAND wasl-euler-case-test)
-
-  add_executable(wasl-modal-decay-test tests/limiter/modal_decay_test.cpp)
-  target_link_libraries(wasl-modal-decay-test PRIVATE wasl_core)
-  add_test(NAME wasl.limiter.modal-decay COMMAND wasl-modal-decay-test)
-
-  add_executable(wasl-simple-weno-test tests/limiter/simple_weno_test.cpp)
-  target_link_libraries(wasl-simple-weno-test PRIVATE wasl_core)
-  add_test(NAME wasl.limiter.simple-weno COMMAND wasl-simple-weno-test)
-
-  add_executable(wasl-euler-limiting-test tests/limiter/euler_limiting_test.cpp)
-  target_link_libraries(wasl-euler-limiting-test PRIVATE wasl_core)
-  add_test(NAME wasl.limiter.euler COMMAND wasl-euler-limiting-test)
-
-  add_executable(wasl-case-io-test tests/io/case_io_test.cpp)
-  target_link_libraries(wasl-case-io-test PRIVATE wasl_core)
-  add_test(NAME wasl.io.case COMMAND wasl-case-io-test)
-
-  # M2 SSP-RK3 time integration and convergence tests.
-  add_executable(wasl-ssp-rk3-test tests/time/ssp_rk3_test.cpp)
-  target_link_libraries(wasl-ssp-rk3-test PRIVATE wasl_core)
-  add_test(NAME wasl.time.ssp-rk3 COMMAND wasl-ssp-rk3-test)
-
-  # M2 boundary-policy tests.
-  add_executable(wasl-boundaries-test tests/boundaries/boundaries_test.cpp)
-  target_link_libraries(wasl-boundaries-test PRIVATE wasl_core)
-  add_test(NAME wasl.boundaries COMMAND wasl-boundaries-test)
+  # M2/M7 time integration, boundaries, I/O, and case runs.
+  wasl_add_test(wasl.time.ssp-rk3 tests/time/ssp_rk3_test.cpp)
+  wasl_add_test(wasl.boundaries tests/boundaries/boundaries_test.cpp)
+  wasl_add_test(wasl.boundaries.line-euler tests/boundaries/line_euler_exterior_test.cpp)
+  wasl_add_test(wasl.io.case tests/io/case_io_test.cpp)
+  wasl_add_test(wasl.runtime.euler-case tests/runtime/euler_case_test.cpp)
+  wasl_add_test(wasl.runtime.scalar-boundary-case tests/runtime/scalar_boundary_case_test.cpp)
+  wasl_add_test(wasl.runtime.euler-boundary-case tests/runtime/euler_boundary_case_test.cpp)
+  wasl_add_test(wasl.runtime.case-regression tests/runtime/case_regression_test.cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime/case_regression_reference.txt)
 
   if(WASL_ENABLE_MPI)
-    # M8 MPI halo transport: two ranks reproduce the serial residual on a split
-    # mesh. Run under mpirun; the in-process oracle (wasl.mpi.halo) already
-    # proves the exchange semantics without MPI.
+    # Two ranks reproduce the serial residual and case loop on a split mesh;
+    # wasl.mpi.halo already proves the exchange semantics without MPI.
     add_executable(wasl-halo-mpi-test tests/communication/halo_mpi_test.cpp)
-    target_link_libraries(wasl-halo-mpi-test PRIVATE wasl_core)
-    target_link_libraries(wasl-halo-mpi-test PRIVATE MPI::MPI_CXX)
+    target_link_libraries(wasl-halo-mpi-test PRIVATE wasl_core MPI::MPI_CXX)
     add_test(NAME wasl.mpi.transport
              COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
                      ${MPIEXEC_PREFLAGS} $<TARGET_FILE:wasl-halo-mpi-test> ${MPIEXEC_POSTFLAGS})

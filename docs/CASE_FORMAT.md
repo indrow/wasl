@@ -29,9 +29,41 @@ expressions or scripts. Initial regions use a small controlled set: `interval`,
 `value * sin(2 pi x)`.
 
 See `cases/tutorials/advection/line-pulse` for the first bootstrap example,
-`smooth-periodic` for executable convergence verification, and `rotating-cone`
-for the later 2D case. Generate ignored `prepared.h5` runtime caches with
-`wasl mesh prepare` after producing a Gmsh MSH 4.1 file.
+`smooth-periodic` for executable convergence verification, `line-inflow` for
+inflow and outflow boundaries, `rotating-cone` for the later 2D case, and
+`cases/tutorials/euler/sod-shock-tube` for limited Euler with outflow ends.
+Generate ignored `prepared.h5` runtime caches with `wasl mesh prepare` after
+producing a Gmsh MSH 4.1 file.
+
+## Boundaries
+
+`mesh/boundaries.toml` assigns one condition to each boundary physical group,
+keyed by its Gmsh physical name:
+
+```toml
+format_version = 1
+
+[boundaries.left]
+type = "inflow"
+value = 1.0
+
+[boundaries.right]
+type = "outflow"
+```
+
+- `periodic` wraps to the opposite boundary; name it with `pair`. Periodic
+  conditions apply to both ends of a line together.
+- `inflow` prescribes a fixed exterior state. Scalar advection requires a
+  finite `value`; where the flow leaves the domain the value is unused.
+- `outflow` copies the interior trace, so waves leave without reflection.
+- `slip_wall` is accepted by validation for Euler but not yet dispatched.
+
+Serial 1D cases dispatch `outflow`; scalar advection also dispatches `inflow`.
+Other cases support `periodic` only.
+
+At run time every boundary face's physical group must have a condition and
+every configured name must match a boundary face; either mistake fails with the
+boundary name.
 
 ## Commands
 
@@ -52,7 +84,8 @@ provenance for serial runs. A completed serial run also contains `history.csv`,
 numbered HDF5 checkpoints and VTU snapshots, and `solution.pvd`.
 
 The serial case driver supports periodic 1D line and 2D straight-triangle
-meshes:
+meshes, outflow boundaries on 1D lines, and inflow boundaries for 1D scalar
+advection:
 
 - Scalar advection uses `equation.type = "scalar_advection"`, one velocity
   component per dimension, `flux.type = "upwind"`, and scalar `default`,
@@ -75,6 +108,6 @@ mpirun -np 2 target/debug/wasl-cli restart path/to/case \
 ```
 
 The MPI restart command derives the other rank-local checkpoint path from the
-rank-0 filename. Non-periodic boundaries, scalar limiting, and Euler with MPI
-fail explicitly at dispatch until their numerical drivers are
-connected.
+rank-0 filename. Non-periodic boundaries outside serial 1D cases, Euler inflow,
+scalar limiting, and Euler with MPI fail explicitly at dispatch until their
+numerical drivers are connected.

@@ -13,8 +13,10 @@
 #include <unistd.h>
 #include <vector>
 
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/mesh/msh_reader.hpp"
+#include "wasl/mesh/line/build_line_mesh.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/msh/msh_reader.hpp"
 
 namespace {
 

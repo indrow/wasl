@@ -57,6 +57,26 @@ Every SSP-RK3 stage eventually performs:
 
 No global sparse matrix is assembled.
 
+## Source layout
+
+The C++ core is organized one concept per file, grouped by the object it
+describes:
+
+```text
+basis, quadrature        reference-element polynomials and rules
+mesh/{msh,line,triangle} MSH import and canonical topologies
+mesh/{prepared,partition} file-ready mesh, ownership, and ghosts
+equations, flux          physics and numerical fluxes
+dg, boundaries, time     residuals, exterior traces, SSP-RK3 and CFL
+limiting                 sensors, WENO, positivity, Euler limiter stencil
+communication            halo schedule, in-process oracle, MPI transport
+io                       one file per format (HDF5, CSV, VTU, PVTU, PVD)
+case                     configuration, validation, and case drivers
+```
+
+Dependencies point down this list. `mesh` never depends on `io`; `io` reads and
+writes the `mesh` representation.
+
 ## Distributed execution
 
 One MPI rank owns one mesh partition and its elements. Host-staged nonblocking
@@ -80,6 +100,22 @@ is in flight.
   holds owned elements followed by ghosts, so the residual is unchanged at
   partition faces. An in-process oracle proves the semantics without MPI; the
   host-staged nonblocking MPI transport drives the same schedule.
+
+- Case configurations share `CaseFiles` (mesh, output, restart paths) and
+  `RunControl` (time range, step limit, output intervals). A serial case
+  describes its state layout, diagnostics, time-step limit, and advance as a
+  `SerialCaseModel`, and one runner owns restart, stepping, history, snapshots,
+  and checkpoint rotation for every equation and element type.
+- Case boundary conditions are keyed by mesh physical name. The case resolves
+  each boundary face's physical group to its condition before the run, and
+  rejects unconfigured faces, unmatched names, and half-periodic pairs. An empty
+  boundary list means periodic, so periodic cases need no names.
+- Line limiter stencils join the two boundary elements only for periodic ends.
+  Open (outflow) ends leave each boundary element one candidate, so WENO never
+  blends a state with the far side of the domain.
+- The structure-of-arrays index of `NUMERICAL_CONVENTIONS.md` is spelled in one
+  place, `ModalLayout`. The scalar solver path keeps `U[element][mode]` and
+  converts at checkpoint boundaries.
 
 ## File formats
 

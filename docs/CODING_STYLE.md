@@ -42,7 +42,7 @@ way the formatter will immediately undo.
 - C++ tests use `<subject>_test.cpp`.
 - Case directories and shell entry points may use lowercase hyphenated names.
 - Public include paths mirror subsystem ownership, for example
-  `wasl/mesh/line_mesh.hpp`.
+  `wasl/mesh/line/line_mesh.hpp`.
 
 ### C++
 
@@ -78,6 +78,19 @@ Follow standard Rust naming enforced by the compiler and Clippy:
   a named `detail` namespace only when templates require header visibility.
 - Do not expose MPI, HDF5, or `cxx` implementation types through core
   numerical APIs.
+
+## Source layout
+
+- One file owns one concept: a type with its operations, one algorithm, or one
+  file format. Split a file when it starts serving a second concept.
+- Group a subsystem's files in subdirectories by the object they describe, for
+  example `mesh/line`, `mesh/triangle`, `dg/euler`, and `io`. Mirror the same
+  path under `cpp/include/wasl` and `cpp/src`.
+- A private header that only its subsystem's sources need sits beside them in
+  `cpp/src` and is included relative to that root, for example
+  `#include "io/hdf5_io.hpp"`. Public headers never include private ones.
+- Add each new source to its subsystem list in `cpp/CMakeLists.txt`. The Rust
+  bridge compiles every `.cpp` under `cpp/src` except `smoke.cpp`.
 
 ## Types and ownership
 
@@ -158,6 +171,11 @@ property that can expose its likely failure:
 - limiter: cell-average preservation and reduced oscillation;
 - Euler: positive supported states and conservation;
 - partitioning: agreement with the single-rank result.
+
+A refactor that should not change numerics must keep
+`wasl.runtime.case-regression` passing. Regenerate its reference with
+`wasl-case-regression-test <reference> --print` only for an intended
+numerical change, and state the reason in the commit.
 
 Convergence records must include mesh sizes, polynomial order, timestep policy,
 norms, observed rates, precision, and tolerance. Reduce the timestep enough to

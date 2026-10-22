@@ -16,10 +16,12 @@
 #include <string>
 #include <unistd.h>
 
-#include "wasl/mesh/line_mesh.hpp" // invalid_element, invalid_physical
-#include "wasl/mesh/msh_reader.hpp"
-#include "wasl/mesh/triangle_geometry.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/msh/msh_reader.hpp"
+#include "wasl/mesh/triangle/build_triangle_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_geometry.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
 
 namespace {
 
@@ -123,12 +125,12 @@ bool check_orientation_and_counts() {
     return false;
   // Every element must have positive (CCW) orientation regardless of input.
   for (std::size_t e = 0; e < mesh.num_elements(); ++e) {
-    if (wasl::triangle_element_map(mesh, e).orientation() != 1)
+    if (wasl::element_map(mesh, e).orientation() != 1)
       return false;
   }
   // Each triangle has area 0.5; the diagonal edge is shared.
   for (std::size_t e = 0; e < mesh.num_elements(); ++e) {
-    if (!approx(wasl::triangle_element_map(mesh, e).area(), 0.5))
+    if (!approx(wasl::element_map(mesh, e).area(), 0.5))
       return false;
   }
   return true;

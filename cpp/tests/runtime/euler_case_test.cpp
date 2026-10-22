@@ -1,36 +1,40 @@
 #include <cmath>
 #include <filesystem>
 
-#include "wasl/core/simulation.hpp"
+#include "wasl/case/euler_case.hpp"
 #include "wasl/equations/euler/primitive.hpp"
-#include "wasl/io/case_io.hpp"
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/mesh/msh_reader.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
+#include "wasl/io/checkpoint.hpp"
+#include "wasl/io/checkpoint_file.hpp"
+#include "wasl/io/prepared_mesh_file.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/prepared/prepare_mesh.hpp"
+#include "wasl/mesh/triangle/build_triangle_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
 
 namespace {
 
 wasl::EulerCase config(const std::filesystem::path &mesh, const std::filesystem::path &output,
                        int dimensions, bool limiting = false) {
   wasl::EulerCase result;
-  result.prepared_mesh = mesh;
-  result.output_directory = output;
+  result.files.prepared_mesh = mesh;
+  result.files.output_directory = output;
   result.dimensions = dimensions;
   result.limiting = limiting;
   result.polynomial_order = limiting ? 2 : 1;
   result.cfl = 0.1;
-  result.end_time = 0.01;
-  result.max_steps = 100;
-  result.history_interval = 100;
-  result.visualization_interval = 100;
-  result.checkpoint_interval = 100;
-  result.keep_checkpoints = 1;
+  result.run.end_time = 0.01;
+  result.run.max_steps = 100;
+  result.run.history_interval = 100;
+  result.run.visualization_interval = 100;
+  result.run.checkpoint_interval = 100;
+  result.run.keep_checkpoints = 1;
   result.initial_regions.push_back(
       {wasl::EulerRegion::Shape::default_region, 0.0, 0.0, 0.0, 0.0, 0.0,
        limiting ? wasl::EulerPrimitive{0.8, -0.1, dimensions == 2 ? 0.1 : 0.0, 0.7}
                 : wasl::EulerPrimitive{1.1, 0.4, dimensions == 2 ? -0.2 : 0.0, 0.9}});
   if (limiting) {
-    result.end_time = 0.001;
+    result.run.end_time = 0.001;
     result.initial_regions.push_back(
         {dimensions == 1 ? wasl::EulerRegion::Shape::interval : wasl::EulerRegion::Shape::circle,
          0.0, 0.5, 0.25, 0.5, 0.3, wasl::EulerPrimitive{1.2, 0.2, 0.0, 1.0}});

@@ -12,6 +12,8 @@ Current milestone: M9 (reproducible 1D and 2D tutorials), active
   numerical tests through the `cpu-debug` and `cpu-mpi` presets.
 - Docker provides a reproducible development environment with HDF5 and
   Open MPI. CI runs the C++ and Rust tests and checks formatting.
+- The C++ core is organized one concept per file in subsystem subdirectories
+  (see `ARCHITECTURE.md`), with private headers beside their sources.
 
 ### Numerics
 
@@ -26,6 +28,9 @@ Current milestone: M9 (reproducible 1D and 2D tutorials), active
   density and pressure positivity limiting. Mode-zero coefficients are
   preserved.
 - Irregular-mesh convergence and conservation are covered by regressions.
+- `wasl.runtime.case-regression` pins every serial case driver (scalar 1D/2D
+  P0-P3 with restart, Euler 1D/2D P0-P2 with and without limiting) to stored
+  step counts, final times, coefficient norms, and masses at relative `1e-10`.
 
 ### Case workflow
 
@@ -39,7 +44,9 @@ Current milestone: M9 (reproducible 1D and 2D tutorials), active
   tags, and partition metadata. Versioned HDF5 checkpoints, CSV history, and
   VTU/PVD output are written without linking VTK.
 - `wasl run` and `wasl restart` dispatch periodic 1D and 2D scalar-advection
-  and Euler cases, including Euler limiting when enabled.
+  and Euler cases, including Euler limiting when enabled. Serial 1D cases also
+  accept outflow boundaries, and scalar advection inflow boundaries, matched to
+  mesh physical names.
 
 ### Distributed execution
 
@@ -58,11 +65,16 @@ Current milestone: M9 (reproducible 1D and 2D tutorials), active
 - `rotating-cone`: 2D periodic P2 scalar advection with a conservation check.
 - `smooth-periodic`: 1D P2 convergence study; every observed rate must exceed
   2.7.
+- `line-inflow`: 1D P2 inflow/outflow advection; mass balance, transport of
+  the inflow state, and free-stream preservation are verified to `1e-12`.
+- `sod-shock-tube`: 1D P2 limited Euler with outflow ends; density L1 error
+  against the exact Riemann solution halves per mesh doubling (3.0e-3 at 200
+  elements), and a uniform moving state is preserved to `1e-12`.
 
 ## Not implemented
 
-- Non-periodic case-level boundaries, scalar-advection limiting, and Euler with
-  MPI at case level.
+- Euler inflow and slip-wall boundaries; non-periodic boundaries for 2D cases
+  and MPI runs; scalar-advection limiting; and Euler with MPI at case level.
 - 2D case-level MPI.
 
 ## Known constraints
@@ -73,14 +85,16 @@ Current milestone: M9 (reproducible 1D and 2D tutorials), active
 
 ## Next recommended task
 
-Add CPU case-level inflow and outflow boundary dispatch plus an executable 1D
-inflow-advection tutorial.
+Add a smooth 1D Euler convergence tutorial: an advected density wave on the
+periodic unit interval.
 
 Acceptance criteria:
 
-- Boundary values are evaluated at every SSP-RK3 stage without changing the
-  periodic path.
-- A constant inflow case matches its exact transported state and preserves a
-  constant free stream to `1e-12`.
+- Euler initial regions accept a 1D `sine` density perturbation,
+  `density = rho0 + value * sin(2 pi x)` at uniform velocity and pressure, and
+  the configuration rejects it for 2D cases.
+- The exact solution is the translated wave; P2 density cell-average L2 rates
+  on 8, 16, and 32 elements are at least 2.7 without limiting.
+- `wasl.runtime.case-regression` passes unchanged.
 - The tutorial README provides reproducible mesh preparation, run, and
   verification commands covered by an automated CLI check.

@@ -19,19 +19,26 @@
 
 #include <mpi.h>
 
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 #include "wasl/boundaries/periodic.hpp"
-#include "wasl/communication/halo_exchange.hpp"
+#include "wasl/case/mpi_run_directory.hpp"
+#include "wasl/case/scalar_advection_case.hpp"
+#include "wasl/communication/halo_schedule.hpp"
 #include "wasl/communication/host_staged_mpi.hpp"
-#include "wasl/core/simulation.hpp"
-#include "wasl/dg/residual_operator.hpp"
-#include "wasl/dg/triangle_residual.hpp"
+#include "wasl/dg/scalar_advection/line_residual.hpp"
+#include "wasl/dg/scalar_advection/triangle_residual.hpp"
 #include "wasl/equations/scalar_advection/scalar_advection.hpp"
-#include "wasl/io/case_io.hpp"
-#include "wasl/mesh/line_geometry.hpp"
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/mesh/partition.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
+#include "wasl/io/checkpoint.hpp"
+#include "wasl/io/checkpoint_file.hpp"
+#include "wasl/io/checkpoint_reassembly.hpp"
+#include "wasl/io/prepared_mesh_file.hpp"
+#include "wasl/mesh/line/line_geometry.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/partition/partition.hpp"
+#include "wasl/mesh/prepared/prepare_mesh.hpp"
+#include "wasl/mesh/prepared/prepared_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
+#include "wasl/time/cfl_timestep.hpp"
 #include "wasl/time/ssp_rk3.hpp"
 
 #include "rank_local_mesh.hpp"
@@ -90,30 +97,30 @@ bool check_line(int rank, int rank_count) {
   MPI_Barrier(MPI_COMM_WORLD);
 
   wasl::ScalarAdvectionCase config;
-  config.prepared_mesh = prepared_path;
+  config.files.prepared_mesh = prepared_path;
   config.mpi = true;
   config.polynomial_order = 1;
   config.wavespeed = 1.0;
   config.cfl = 0.2;
-  config.start_time = 0.0;
-  config.end_time = 0.04;
-  config.max_steps = 100;
-  config.history_interval = 1;
-  config.visualization_interval = 100;
-  config.checkpoint_interval = 100;
-  config.keep_checkpoints = 2;
+  config.run.start_time = 0.0;
+  config.run.end_time = 0.04;
+  config.run.max_steps = 100;
+  config.run.history_interval = 1;
+  config.run.visualization_interval = 100;
+  config.run.checkpoint_interval = 100;
+  config.run.keep_checkpoints = 2;
   config.initial_default = 1.0;
   config.initial_intervals.push_back({0.25, 0.5, 2.0});
 
   const auto fresh_directory =
       wasl::prepare_mpi_run_directory(directory / "results", "test = true\n");
-  config.output_directory = fresh_directory;
+  config.files.output_directory = fresh_directory;
   const auto fresh = wasl::run_scalar_advection_case(config);
 
   const auto split_directory =
       wasl::prepare_mpi_run_directory(directory / "results", "test = true\n");
-  config.output_directory = split_directory;
-  config.end_time = wasl::advection_cfl_timestep(serial, wasl::ScalarAdvection{1.0}, 1, 0.2);
+  config.files.output_directory = split_directory;
+  config.run.end_time = wasl::advection_cfl_timestep(serial, wasl::ScalarAdvection{1.0}, 1, 0.2);
   const auto split = wasl::run_scalar_advection_case(config);
 
   std::ostringstream restart_name;
@@ -121,9 +128,9 @@ bool check_line(int rank, int rank_count) {
                << "-rank-000000.h5";
   const auto restarted_directory =
       wasl::prepare_mpi_run_directory(directory / "results", "test = true\n");
-  config.output_directory = restarted_directory;
-  config.restart_checkpoint = split_directory / restart_name.str();
-  config.end_time = 0.04;
+  config.files.output_directory = restarted_directory;
+  config.files.restart_checkpoint = split_directory / restart_name.str();
+  config.run.end_time = 0.04;
   const auto restarted = wasl::run_scalar_advection_case(config);
 
   bool ok = fresh.step == restarted.step && approx(fresh.time, restarted.time);

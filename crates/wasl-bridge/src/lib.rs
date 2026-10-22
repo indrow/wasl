@@ -41,6 +41,9 @@ mod ffi {
             initial_sine_amplitude: f64,
             intervals: &[f64],
             circles: &[f64],
+            boundary_names: &[String],
+            boundary_kinds: &[u8],
+            boundary_values: &[f64],
         ) -> Result<String>;
         fn run_euler_case(
             mesh_path: &str,
@@ -62,6 +65,9 @@ mod ffi {
             checkpoint_interval: u64,
             keep_checkpoints: u64,
             regions: &[f64],
+            boundary_names: &[String],
+            boundary_kinds: &[u8],
+            boundary_values: &[f64],
         ) -> Result<String>;
     }
 }
@@ -157,6 +163,88 @@ mod tests {
         .unwrap();
         assert!(load_case(&directory).unwrap_err().contains("velocity"));
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    fn inflow_tutorial() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../cases/tutorials/advection/line-inflow")
+    }
+
+    // A copy of the inflow tutorial with one file replaced.
+    fn inflow_variant(name: &str, file: &str, contents: &str) -> PathBuf {
+        let directory = std::env::temp_dir().join(format!("wasl-inflow-config-{name}"));
+        let _ = fs::remove_dir_all(&directory);
+        for sub in ["", "mesh", "initial"] {
+            fs::create_dir_all(directory.join(sub)).unwrap();
+        }
+        for relative in [
+            "case.toml",
+            "physics.toml",
+            "numerics.toml",
+            "solver.toml",
+            "mesh/boundaries.toml",
+            "initial/state.toml",
+        ] {
+            fs::copy(inflow_tutorial().join(relative), directory.join(relative)).unwrap();
+        }
+        fs::write(directory.join(file), contents).unwrap();
+        directory
+    }
+
+    #[test]
+    fn inflow_tutorial_is_checked_and_supported() {
+        let config = load_case(&inflow_tutorial()).unwrap();
+        assert!(check_run_support(&config).is_ok());
+        assert!(effective_toml(&config).unwrap().contains("value = 1.0"));
+    }
+
+    #[test]
+    fn inflow_values_are_validated_by_boundary_name() {
+        let missing = inflow_variant(
+            "missing",
+            "mesh/boundaries.toml",
+            "format_version = 1\n[boundaries.left]\ntype = \"inflow\"\n[boundaries.right]\ntype = \"outflow\"\n",
+        );
+        assert!(load_case(&missing)
+            .unwrap_err()
+            .contains("boundaries.left.value"));
+        let misplaced = inflow_variant(
+            "misplaced",
+            "mesh/boundaries.toml",
+            "format_version = 1\n[boundaries.left]\ntype = \"inflow\"\nvalue = 1.0\n[boundaries.right]\ntype = \"outflow\"\nvalue = 2.0\n",
+        );
+        assert!(load_case(&misplaced)
+            .unwrap_err()
+            .contains("boundaries.right.value"));
+        for directory in [missing, misplaced] {
+            fs::remove_dir_all(directory).unwrap();
+        }
+    }
+
+    #[test]
+    fn inflow_dispatch_requires_a_serial_1d_scalar_case() {
+        let mpi = inflow_variant(
+            "mpi",
+            "solver.toml",
+            &fs::read_to_string(inflow_tutorial().join("solver.toml"))
+                .unwrap()
+                .replace("type = \"none\"", "type = \"mpi\""),
+        );
+        assert!(check_run_support(&load_case(&mpi).unwrap())
+            .unwrap_err()
+            .contains("boundaries.left.type"));
+        fs::remove_dir_all(mpi).unwrap();
+    }
+
+    #[test]
+    fn sod_tutorial_is_supported_and_euler_inflow_is_not() {
+        let sod = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../cases/tutorials/euler/sod-shock-tube");
+        let mut config = load_case(&sod).unwrap();
+        assert!(check_run_support(&config).is_ok());
+        config.boundaries.get_mut("left").unwrap().kind = "inflow".into();
+        assert!(check_run_support(&config)
+            .unwrap_err()
+            .contains("boundaries.left.type"));
     }
 
     #[test]

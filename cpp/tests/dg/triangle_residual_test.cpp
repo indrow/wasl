@@ -10,11 +10,13 @@
 #include <vector>
 
 #include "wasl/basis/dubiner_triangle.hpp"
-#include "wasl/basis/reference_element.hpp"
-#include "wasl/dg/triangle_residual.hpp"
-#include "wasl/mesh/msh_reader.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/basis/mode_count.hpp"
+#include "wasl/dg/scalar_advection/triangle_residual.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/triangle/build_triangle_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
+#include "wasl/quadrature/triangle_edge_rules.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace {
 
@@ -107,7 +109,7 @@ bool check_shared_face_conservation(int p) {
   double integral_rate = 0.0;
   for (std::size_t element = 0; element < structured.mesh.num_elements(); ++element) {
     integral_rate += std::sqrt(2.0) *
-                     wasl::triangle_element_map(structured.mesh, element).jacobian_determinant() *
+                     wasl::element_map(structured.mesh, element).jacobian_determinant() *
                      rhs[element * mode_count];
   }
 
@@ -117,7 +119,7 @@ bool check_shared_face_conservation(int p) {
     const auto &face = structured.mesh.faces[face_index];
     if (face.right_element != wasl::invalid_element)
       continue;
-    const auto map = wasl::triangle_element_map(structured.mesh, face.left_element);
+    const auto map = wasl::element_map(structured.mesh, face.left_element);
     const auto &rule = edge_rules[static_cast<std::size_t>(face.left_local_edge)];
     const double reference_length = face.left_local_edge == 1 ? 2.0 * std::sqrt(2.0) : 2.0;
     const double scale = map.edge_length(face.left_local_edge) / reference_length;
@@ -141,7 +143,7 @@ std::vector<double> project(const wasl::TriangleMesh &mesh, int polynomial_order
   std::vector<double> coefficients(mesh.num_elements() * mode_count, 0.0);
   std::vector<double> basis(mode_count);
   for (std::size_t element = 0; element < mesh.num_elements(); ++element) {
-    const auto map = wasl::triangle_element_map(mesh, element);
+    const auto map = wasl::element_map(mesh, element);
     for (int q = 0; q < rule.size(); ++q) {
       double x = 0.0, y = 0.0;
       map.reference_to_physical(rule.xi[q], rule.eta[q], x, y);
@@ -162,7 +164,7 @@ double periodic_trace(const StructuredMesh &structured, int polynomial_order,
   const double local_y = y * n - j;
   const int triangle = local_y <= local_x ? 0 : 1;
   const std::size_t element = static_cast<std::size_t>(2 * (j * n + i) + triangle);
-  const auto map = wasl::triangle_element_map(structured.mesh, element);
+  const auto map = wasl::element_map(structured.mesh, element);
   double xi = 0.0, eta = 0.0;
   map.physical_to_reference(x, y, xi, eta);
   const std::size_t mode_count = wasl::triangle_mode_count(polynomial_order);
@@ -178,7 +180,7 @@ std::vector<double> periodic_exterior(const StructuredMesh &structured, int poly
     const auto &face = structured.mesh.faces[face_index];
     if (face.right_element != wasl::invalid_element)
       continue;
-    const auto map = wasl::triangle_element_map(structured.mesh, face.left_element);
+    const auto map = wasl::element_map(structured.mesh, face.left_element);
     const auto &rule = rules[static_cast<std::size_t>(face.left_local_edge)];
     for (int q = 0; q < edge_points; ++q) {
       double x = 0.0, y = 0.0;
@@ -232,7 +234,7 @@ double l2_error(const wasl::TriangleMesh &mesh, int polynomial_order,
   std::vector<double> basis(mode_count);
   double error_squared = 0.0;
   for (std::size_t element = 0; element < mesh.num_elements(); ++element) {
-    const auto map = wasl::triangle_element_map(mesh, element);
+    const auto map = wasl::element_map(mesh, element);
     for (int q = 0; q < rule.size(); ++q) {
       double x = 0.0, y = 0.0;
       map.reference_to_physical(rule.xi[q], rule.eta[q], x, y);
@@ -282,7 +284,7 @@ double total_mass(const wasl::TriangleMesh &mesh, int polynomial_order,
   const std::size_t mode_count = wasl::triangle_mode_count(polynomial_order);
   double mass = 0.0;
   for (std::size_t element = 0; element < mesh.num_elements(); ++element) {
-    mass += std::sqrt(2.0) * wasl::triangle_element_map(mesh, element).jacobian_determinant() *
+    mass += std::sqrt(2.0) * wasl::element_map(mesh, element).jacobian_determinant() *
             coefficients[element * mode_count];
   }
   return mass;

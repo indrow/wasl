@@ -6,7 +6,7 @@
 #include <cmath>
 
 #include "wasl/basis/legendre.hpp"
-#include "wasl/quadrature/quadrature.hpp"
+#include "wasl/quadrature/gauss_legendre.hpp"
 
 namespace {
 

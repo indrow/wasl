@@ -1,0 +1,7 @@
+format_version = 1
+representation = "scalar"
+
+[[regions]]
+name = "background"
+where = "default"
+value = 0.0

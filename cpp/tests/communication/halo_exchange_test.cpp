@@ -23,16 +23,19 @@
 #include <string>
 #include <vector>
 
-#include "wasl/basis/reference_element.hpp"
-#include "wasl/communication/halo_exchange.hpp"
-#include "wasl/dg/residual_operator.hpp"
-#include "wasl/dg/triangle_residual.hpp"
+#include "wasl/basis/mode_count.hpp"
+#include "wasl/communication/halo_schedule.hpp"
+#include "wasl/communication/in_process_halo_exchange.hpp"
+#include "wasl/dg/scalar_advection/line_residual.hpp"
+#include "wasl/dg/scalar_advection/triangle_residual.hpp"
 #include "wasl/equations/scalar_advection/scalar_advection.hpp"
-#include "wasl/io/case_io.hpp"
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/mesh/msh_reader.hpp"
-#include "wasl/mesh/partition.hpp"
-#include "wasl/mesh/triangle_mesh.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/msh/msh_document.hpp"
+#include "wasl/mesh/partition/partition.hpp"
+#include "wasl/mesh/prepared/prepare_mesh.hpp"
+#include "wasl/mesh/prepared/prepared_mesh.hpp"
+#include "wasl/mesh/triangle/build_triangle_mesh.hpp"
+#include "wasl/mesh/triangle/triangle_mesh.hpp"
 
 namespace {
 

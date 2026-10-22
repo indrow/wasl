@@ -1,0 +1,8 @@
+format_version = 1
+
+[boundaries.left]
+type = "inflow"
+value = 1.0
+
+[boundaries.right]
+type = "outflow"

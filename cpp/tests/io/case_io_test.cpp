@@ -9,9 +9,18 @@
 
 #include <H5Cpp.h>
 
-#include "wasl/io/case_io.hpp"
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/mesh/partition.hpp"
+#include "wasl/io/checkpoint.hpp"
+#include "wasl/io/checkpoint_file.hpp"
+#include "wasl/io/history_csv.hpp"
+#include "wasl/io/prepared_mesh_file.hpp"
+#include "wasl/io/pvd_writer.hpp"
+#include "wasl/io/pvtu_writer.hpp"
+#include "wasl/io/vtu_writer.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/partition/partition.hpp"
+#include "wasl/mesh/prepared/owned_mesh_slice.hpp"
+#include "wasl/mesh/prepared/prepare_mesh.hpp"
+#include "wasl/mesh/prepared/prepared_mesh.hpp"
 
 namespace {
 

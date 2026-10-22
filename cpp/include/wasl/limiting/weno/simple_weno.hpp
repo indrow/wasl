@@ -1,3 +1,5 @@
+// Simple WENO blending of one target polynomial with neighbor candidates.
+
 #pragma once
 
 #include <cstddef>
@@ -5,6 +7,7 @@
 
 namespace wasl {
 
+// Smoothness indicator: energy of the non-mean modes.
 inline double weno_smoothness(const double *coefficients, std::size_t mode_count) noexcept {
   double value = 0.0;
   for (std::size_t mode = 1; mode < mode_count; ++mode)
@@ -12,9 +15,9 @@ inline double weno_smoothness(const double *coefficients, std::size_t mode_count
   return value;
 }
 
-// Blend the target and transformed neighbor candidates. candidates is packed
-// as [candidate][mode]. The target receives half the ideal weight and the
-// immediate neighbors share the other half.
+// candidates is packed [candidate][mode]. The target receives half the ideal
+// weight and the neighbors share the other half. Mode zero is copied from the
+// target, so the cell average is preserved exactly.
 inline void simple_weno(const double *target, const double *candidates, std::size_t candidate_count,
                         std::size_t mode_count, double *limited, double epsilon = 1e-12) {
   if (candidate_count == 0) {
@@ -29,8 +32,8 @@ inline void simple_weno(const double *target, const double *candidates, std::siz
   double weight_sum = weights[0];
   const double neighbor_ideal_weight = 0.5 / static_cast<double>(candidate_count);
   for (std::size_t candidate = 0; candidate < candidate_count; ++candidate) {
-    const double *values = candidates + candidate * mode_count;
-    const double denominator = epsilon + weno_smoothness(values, mode_count);
+    const double denominator =
+        epsilon + weno_smoothness(candidates + candidate * mode_count, mode_count);
     weights[candidate + 1] = neighbor_ideal_weight / (denominator * denominator);
     weight_sum += weights[candidate + 1];
   }

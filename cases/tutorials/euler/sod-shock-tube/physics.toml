@@ -1,0 +1,6 @@
+format_version = 1
+
+[equation]
+type = "euler"
+dimensions = 1
+heat_capacity_ratio = 1.4

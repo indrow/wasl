@@ -18,11 +18,13 @@
 #include <vector>
 
 #include "wasl/basis/legendre.hpp"
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 #include "wasl/boundaries/periodic.hpp"
-#include "wasl/mesh/line_geometry.hpp"
-#include "wasl/mesh/line_mesh.hpp"
-#include "wasl/quadrature/quadrature.hpp"
+#include "wasl/mesh/line/line_geometry.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/quadrature/gauss_legendre.hpp"
+#include "wasl/time/cfl_timestep.hpp"
+#include "wasl/time/line_advection_step.hpp"
 #include "wasl/time/ssp_rk3.hpp"
 
 namespace {

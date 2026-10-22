@@ -8,8 +8,9 @@
 #include <cmath>
 #include <cstdio>
 
-#include "wasl/quadrature/quadrature.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/quadrature/gauss_legendre.hpp"
+#include "wasl/quadrature/triangle_edge_rules.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace {
 

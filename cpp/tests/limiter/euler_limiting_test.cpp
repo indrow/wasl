@@ -5,11 +5,13 @@
 #include <vector>
 
 #include "wasl/basis/dubiner_triangle.hpp"
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 #include "wasl/equations/euler/primitive.hpp"
 #include "wasl/limiting/positivity/euler_positivity.hpp"
 #include "wasl/limiting/weno/euler_characteristic.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/limiting/weno/euler_characteristic_weno.hpp"
+#include "wasl/quadrature/triangle_edge_rules.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace {
 

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cmath>
 
 #include "wasl/equations/euler/flux.hpp"
 
@@ -14,15 +13,14 @@ inline EulerConserved hllc_star_state(const EulerConserved &state,
                                       const EulerPrimitive &primitive_state, double normal_x,
                                       double normal_y, double wave_speed,
                                       double contact_speed) noexcept {
-  const double normal_velocity =
-      primitive_state.velocity_x * normal_x + primitive_state.velocity_y * normal_y;
+  const double velocity = normal_velocity(primitive_state, normal_x, normal_y);
   const double star_density =
-      state.density * (wave_speed - normal_velocity) / (wave_speed - contact_speed);
-  const double velocity_shift = contact_speed - normal_velocity;
+      state.density * (wave_speed - velocity) / (wave_speed - contact_speed);
+  const double velocity_shift = contact_speed - velocity;
   const double specific_star_energy =
       state.total_energy / state.density +
-      velocity_shift * (contact_speed + primitive_state.pressure /
-                                            (state.density * (wave_speed - normal_velocity)));
+      velocity_shift *
+          (contact_speed + primitive_state.pressure / (state.density * (wave_speed - velocity)));
   return {star_density, star_density * (primitive_state.velocity_x + velocity_shift * normal_x),
           star_density * (primitive_state.velocity_y + velocity_shift * normal_y),
           star_density * specific_star_energy};
@@ -44,14 +42,10 @@ inline EulerConserved hllc_flux(const Euler &equation, const EulerConserved &lef
                                 double normal_y) noexcept {
   const EulerPrimitive left_value = primitive(equation, left);
   const EulerPrimitive right_value = primitive(equation, right);
-  const double left_normal_velocity =
-      left_value.velocity_x * normal_x + left_value.velocity_y * normal_y;
-  const double right_normal_velocity =
-      right_value.velocity_x * normal_x + right_value.velocity_y * normal_y;
-  const double left_sound_speed =
-      std::sqrt(equation.heat_capacity_ratio * left_value.pressure / left_value.density);
-  const double right_sound_speed =
-      std::sqrt(equation.heat_capacity_ratio * right_value.pressure / right_value.density);
+  const double left_normal_velocity = normal_velocity(left_value, normal_x, normal_y);
+  const double right_normal_velocity = normal_velocity(right_value, normal_x, normal_y);
+  const double left_sound_speed = sound_speed(equation, left_value);
+  const double right_sound_speed = sound_speed(equation, right_value);
   const double left_wave =
       std::min(left_normal_velocity - left_sound_speed, right_normal_velocity - right_sound_speed);
   const double right_wave =

@@ -1,0 +1,25 @@
+format_version = 1
+
+# The front enters at t = 0 and leaves through the outflow end at t = 1.
+[run]
+start_time = 0.0
+end_time = 1.5
+max_steps = 100000
+
+[parallel]
+type = "none"
+
+[output]
+directory = "results"
+
+[output.history]
+interval_steps = 1
+
+[output.visualization]
+format = "vtk_xml"
+interval_steps = 100
+
+[output.checkpoint]
+format = "hdf5"
+interval_steps = 1000
+keep_last = 1

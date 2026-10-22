@@ -1,0 +1,20 @@
+format_version = 1
+
+[dg]
+formulation = "weak"
+basis = "modal_legendre"
+polynomial_order = 2
+geometry_order = 1
+
+[dg.quadrature]
+volume_order = 5
+
+[flux]
+type = "upwind"
+
+[limiting]
+enabled = false
+
+[time]
+integrator = "ssp_rk3"
+cfl = 0.2

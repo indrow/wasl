@@ -20,53 +20,43 @@ namespace wasl {
 inline double legendre_norm(int j) noexcept { return std::sqrt((2.0 * j + 1.0) / 2.0); }
 
 // Evaluate orthonormal modes 0..p at xi into values[0..p].
-// values must point to at least p + 1 doubles.
 inline void legendre_basis(double xi, int p, double *values) noexcept {
-  values[0] = legendre_norm(0); // phi_0 = 1 / sqrt(2), constant
+  values[0] = legendre_norm(0);
   if (p <= 0)
     return;
 
-  // Standard Legendre recurrence P_{j+1} = ((2j+1) xi P_j - j P_{j-1}) / (j+1).
-  double pjm1 = 1.0; // P_{j-1}
-  double pj = xi;    // P_j
-  values[1] = legendre_norm(1) * pj;
+  // P_{j+1} = ((2j+1) xi P_j - j P_{j-1}) / (j+1).
+  double p_previous = 1.0;
+  double p_current = xi;
+  values[1] = legendre_norm(1) * p_current;
   for (int j = 1; j < p; ++j) {
-    const double pj_next = ((2.0 * j + 1.0) * xi * pj - j * pjm1) / (j + 1);
-    pjm1 = pj;
-    pj = pj_next;
-    values[j + 1] = legendre_norm(j + 1) * pj;
+    const double p_next = ((2.0 * j + 1.0) * xi * p_current - j * p_previous) / (j + 1);
+    p_previous = p_current;
+    p_current = p_next;
+    values[j + 1] = legendre_norm(j + 1) * p_current;
   }
 }
 
-// Evaluate orthonormal gradients d/dxi of modes 0..p at xi into grads[0..p].
-// grads must point to at least p + 1 doubles.
-inline void legendre_basis_gradient(double xi, int p, double *grads) noexcept {
-  grads[0] = 0.0; // derivative of the constant mode
+// Evaluate orthonormal gradients d/dxi of modes 0..p at xi into gradients[0..p].
+inline void legendre_basis_gradient(double xi, int p, double *gradients) noexcept {
+  gradients[0] = 0.0;
   if (p <= 0)
     return;
 
-  // Coupled recurrence on the derivatives of the standard Legendre polynomials:
-  //   (j+1) P'_{j+1} = (2j+1)(P_j + xi P'_j) - j P'_{j-1}.
-  double pjm1 = 1.0, pj = xi;    // P_{j-1}, P_j
-  double dpjm1 = 0.0, dpj = 1.0; // P'_{j-1}, P'_j
-  grads[1] = legendre_norm(1) * dpj;
+  // (j+1) P'_{j+1} = (2j+1)(P_j + xi P'_j) - j P'_{j-1}.
+  double p_previous = 1.0, p_current = xi;
+  double dp_previous = 0.0, dp_current = 1.0;
+  gradients[1] = legendre_norm(1) * dp_current;
   for (int j = 1; j < p; ++j) {
-    const double pj_next = ((2.0 * j + 1.0) * xi * pj - j * pjm1) / (j + 1);
-    const double dpj_next = ((2.0 * j + 1.0) * (pj + xi * dpj) - j * dpjm1) / (j + 1);
-    pjm1 = pj;
-    pj = pj_next;
-    dpjm1 = dpj;
-    dpj = dpj_next;
-    grads[j + 1] = legendre_norm(j + 1) * dpj;
+    const double p_next = ((2.0 * j + 1.0) * xi * p_current - j * p_previous) / (j + 1);
+    const double dp_next =
+        ((2.0 * j + 1.0) * (p_current + xi * dp_current) - j * dp_previous) / (j + 1);
+    p_previous = p_current;
+    p_current = p_next;
+    dp_previous = dp_current;
+    dp_current = dp_next;
+    gradients[j + 1] = legendre_norm(j + 1) * dp_current;
   }
-}
-
-// Combined values and gradients at xi. Either pointer may be null.
-inline void legendre_basis_with_gradient(double xi, int p, double *values, double *grads) noexcept {
-  if (values != nullptr)
-    legendre_basis(xi, p, values);
-  if (grads != nullptr)
-    legendre_basis_gradient(xi, p, grads);
 }
 
 } // namespace wasl

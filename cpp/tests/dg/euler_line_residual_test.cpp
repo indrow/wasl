@@ -3,10 +3,10 @@
 #include <vector>
 
 #include "wasl/basis/legendre.hpp"
-#include "wasl/dg/euler_line_residual.hpp"
+#include "wasl/dg/euler/line_residual.hpp"
 #include "wasl/equations/euler/primitive.hpp"
 #include "wasl/flux/hllc.hpp"
-#include "wasl/mesh/line_mesh.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
 
 namespace {
 

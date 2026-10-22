@@ -21,9 +21,9 @@
 #include <string>
 #include <vector>
 
-#include "wasl/io/case_io.hpp"
-#include "wasl/mesh/line_mesh.hpp" // invalid_element
-#include "wasl/mesh/partition.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/mesh/partition/partition.hpp"
+#include "wasl/mesh/prepared/prepared_mesh.hpp"
 
 namespace {
 

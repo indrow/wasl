@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-#include "wasl/mesh/triangle_geometry.hpp"
+#include "wasl/mesh/triangle/triangle_geometry.hpp"
 
 namespace {
 

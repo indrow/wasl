@@ -35,10 +35,7 @@ inline EulerConserved euler_normal_flux(const Euler &equation, const EulerConser
 inline double euler_maximum_characteristic_speed(const Euler &equation, const EulerConserved &state,
                                                  double normal_x, double normal_y) noexcept {
   const EulerPrimitive value = primitive(equation, state);
-  const double normal_velocity = value.velocity_x * normal_x + value.velocity_y * normal_y;
-  const double sound_speed =
-      std::sqrt(equation.heat_capacity_ratio * value.pressure / value.density);
-  return std::fabs(normal_velocity) + sound_speed;
+  return std::fabs(normal_velocity(value, normal_x, normal_y)) + sound_speed(equation, value);
 }
 
 } // namespace wasl

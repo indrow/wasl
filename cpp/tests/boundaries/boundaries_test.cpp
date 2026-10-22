@@ -11,12 +11,16 @@
 #include <vector>
 
 #include "wasl/basis/legendre.hpp"
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 #include "wasl/boundaries/inflow.hpp"
+#include "wasl/boundaries/line_boundary_conditions.hpp"
 #include "wasl/boundaries/outflow.hpp"
 #include "wasl/boundaries/periodic.hpp"
-#include "wasl/mesh/line_geometry.hpp"
-#include "wasl/mesh/line_mesh.hpp"
+#include "wasl/equations/scalar_advection/scalar_advection.hpp"
+#include "wasl/mesh/line/line_geometry.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
+#include "wasl/time/cfl_timestep.hpp"
+#include "wasl/time/line_advection_step.hpp"
 
 namespace {
 
@@ -206,6 +210,32 @@ bool check_periodic_conservation_one_step() {
   return approx(mass(), mass_before, 1e-12);
 }
 
+// Mixed ends: the left face takes the inflow value, the right face its owner's
+// own trace at xi = +1, and interior faces are unchanged.
+bool check_mixed_inflow_outflow() {
+  const wasl::LineMesh mesh = make_uniform_mesh(1.0, 4);
+  constexpr int p = 2;
+  const int mode_count = static_cast<int>(wasl::line_mode_count(p));
+  std::vector<double> coefficients(mesh.num_elements() * mode_count, 0.0);
+  for (std::size_t e = 0; e < mesh.num_elements(); ++e)
+    for (int j = 0; j < mode_count; ++j)
+      coefficients[e * mode_count + j] = 0.5 + 0.1 * static_cast<double>(e) - 0.2 * j;
+
+  const wasl::LineBoundaryConditions conditions{{wasl::BoundaryKind::inflow, 2.5},
+                                                {wasl::BoundaryKind::outflow, 0.0}};
+  const auto mixed = wasl::make_line_boundary_exterior(mesh, p, conditions)(coefficients);
+  const auto periodic = wasl::make_periodic_exterior(mesh, p)(coefficients);
+  const auto last = static_cast<int>(mesh.num_elements()) - 1;
+  if (mixed.front() != 2.5)
+    return false;
+  if (!approx(mixed.back(), element_trace(coefficients, p, last, 1.0)))
+    return false;
+  for (std::size_t f = 1; f + 1 < mesh.faces.size(); ++f)
+    if (mixed[f] != periodic[f])
+      return false;
+  return true;
+}
+
 } // namespace
 
 int main() {
@@ -218,6 +248,8 @@ int main() {
   if (!check_interior_faces_match())
     return 1;
   if (!check_periodic_conservation_one_step())
+    return 1;
+  if (!check_mixed_inflow_outflow())
     return 1;
   return 0;
 }

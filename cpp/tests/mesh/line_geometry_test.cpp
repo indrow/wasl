@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-#include "wasl/mesh/line_geometry.hpp"
+#include "wasl/mesh/line/line_geometry.hpp"
 
 namespace {
 

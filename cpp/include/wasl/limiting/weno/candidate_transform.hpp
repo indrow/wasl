@@ -1,25 +1,26 @@
+// Neighbor candidate polynomials for WENO on triangles.
+
 #pragma once
 
 #include <cstddef>
 #include <vector>
 
 #include "wasl/basis/dubiner_triangle.hpp"
-#include "wasl/basis/reference_element.hpp"
-#include "wasl/mesh/triangle_geometry.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/basis/modal_expansion.hpp"
+#include "wasl/basis/mode_count.hpp"
+#include "wasl/mesh/triangle/triangle_geometry.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace wasl {
 
-// L2-project a polynomial from its affine source triangle into the target
-// triangle basis. Both coefficient arrays contain triangle_mode_count(p)
-// entries in the documented Dubiner ordering.
+// L2-project the polynomial of an affine source triangle into the target
+// triangle basis. Both arrays hold triangle_mode_count(p) Dubiner coefficients.
 inline void project_neighbor_polynomial(const TriangleMap &source, const TriangleMap &target,
                                         int polynomial_order, const double *source_coefficients,
                                         double *target_coefficients) {
   const std::size_t mode_count = triangle_mode_count(polynomial_order);
   const TriangleQuadratureRule quadrature = triangle_volume_rule(polynomial_order);
-  std::vector<double> source_basis(mode_count);
-  std::vector<double> target_basis(mode_count);
+  std::vector<double> source_basis(mode_count), target_basis(mode_count);
   for (std::size_t mode = 0; mode < mode_count; ++mode)
     target_coefficients[mode] = 0.0;
 
@@ -31,14 +32,14 @@ inline void project_neighbor_polynomial(const TriangleMap &source, const Triangl
     dubiner_basis(source_xi, source_eta, polynomial_order, source_basis.data());
     dubiner_basis(quadrature.xi[q], quadrature.eta[q], polynomial_order, target_basis.data());
 
-    double value = 0.0;
-    for (std::size_t mode = 0; mode < mode_count; ++mode)
-      value += source_coefficients[mode] * source_basis[mode];
+    const double value = modal_sum(source_coefficients, source_basis.data(), mode_count);
     for (std::size_t mode = 0; mode < mode_count; ++mode)
       target_coefficients[mode] += quadrature.weights[q] * value * target_basis[mode];
   }
 }
 
+// A projected neighbor with the target's own mean, so blending preserves the
+// cell average.
 inline void make_weno_candidate(const TriangleMap &source, const TriangleMap &target,
                                 int polynomial_order, const double *source_coefficients,
                                 double target_mean_mode, double *candidate) {

@@ -177,6 +177,9 @@ pub struct Boundary {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pair: Option<String>,
+    /// Prescribed exterior state of a scalar inflow boundary.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -424,6 +427,24 @@ pub fn load_case(case: &Path) -> Result<EffectiveConfig, String> {
                     return Err(format!("boundaries.{name}.pair: unknown boundary {pair:?}"));
                 }
             }
+        }
+        let scalar_inflow =
+            boundary.kind == "inflow" && physics.equation.kind == "scalar_advection";
+        match boundary.value {
+            Some(_) if !scalar_inflow => {
+                return Err(format!(
+                    "boundaries.{name}.value: valid for scalar-advection inflow only"
+                ));
+            }
+            Some(value) if !value.is_finite() => {
+                return Err(format!("boundaries.{name}.value: must be finite"));
+            }
+            None if scalar_inflow => {
+                return Err(format!(
+                    "boundaries.{name}.value: scalar-advection inflow requires a value"
+                ));
+            }
+            _ => {}
         }
     }
     let representation = if physics.equation.kind == "scalar_advection" {

@@ -26,6 +26,35 @@ pub fn export_checkpoint(checkpoint: &Path, mesh: &Path, output: &Path) -> Resul
     .map_err(|e| e.to_string())
 }
 
+/// Boundary conditions as parallel arrays for the bridge, in name order. Kind
+/// codes follow `wasl::BoundaryKind` in C++.
+struct BoundaryArrays {
+    names: Vec<String>,
+    kinds: Vec<u8>,
+    values: Vec<f64>,
+}
+
+impl BoundaryArrays {
+    fn new(config: &EffectiveConfig) -> Self {
+        let mut arrays = Self {
+            names: Vec::new(),
+            kinds: Vec::new(),
+            values: Vec::new(),
+        };
+        for (name, boundary) in &config.boundaries {
+            arrays.names.push(name.clone());
+            arrays.kinds.push(match boundary.kind.as_str() {
+                "periodic" => 0,
+                "inflow" => 1,
+                "outflow" => 2,
+                _ => unreachable!("check_run_support rejects other boundary types"),
+            });
+            arrays.values.push(boundary.value.unwrap_or(0.0));
+        }
+        arrays
+    }
+}
+
 pub fn run_case(
     case: &Path,
     config: &EffectiveConfig,
@@ -36,6 +65,7 @@ pub fn run_case(
     let mesh = checked_relative(case, &config.mesh.file, "mesh.file")?
         .canonicalize()
         .map_err(|e| format!("mesh.file: {e}"))?;
+    let boundaries = BoundaryArrays::new(config);
     if config.equation.kind == "euler" {
         let mut regions = Vec::new();
         for region in &config.regions {
@@ -79,6 +109,9 @@ pub fn run_case(
             config.output.checkpoint.interval_steps,
             config.output.checkpoint.keep_last,
             &regions,
+            &boundaries.names,
+            &boundaries.kinds,
+            &boundaries.values,
         )
         .map_err(|e| format!("run: {e}"));
     }
@@ -141,6 +174,9 @@ pub fn run_case(
         initial_sine.unwrap_or(0.0),
         &intervals,
         &circles,
+        &boundaries.names,
+        &boundaries.kinds,
+        &boundaries.values,
     )
     .map_err(|e| format!("run: {e}"))
 }
@@ -149,12 +185,26 @@ pub fn check_run_support(config: &EffectiveConfig) -> Result<(), String> {
     if !matches!(config.equation.dimensions, 1 | 2)
         || !matches!(config.equation.kind.as_str(), "scalar_advection" | "euler")
         || !matches!(config.parallel.kind.as_str(), "none" | "mpi")
-        || config
-            .boundaries
-            .values()
-            .any(|value| value.kind != "periodic")
     {
-        return Err("run: supported dispatch requires a 1D or 2D scalar-advection or Euler case with periodic boundaries".into());
+        return Err(
+            "run: supported dispatch requires a 1D or 2D scalar-advection or Euler case".into(),
+        );
+    }
+    for (name, boundary) in &config.boundaries {
+        let serial_line = config.equation.dimensions == 1 && config.parallel.kind == "none";
+        let scalar = config.equation.kind == "scalar_advection";
+        let supported = match boundary.kind.as_str() {
+            "periodic" => true,
+            "outflow" => serial_line,
+            "inflow" => serial_line && scalar,
+            _ => false,
+        };
+        if !supported {
+            return Err(format!(
+                "boundaries.{name}.type: {:?} dispatch is unsupported here; serial 1D cases support outflow, scalar advection also inflow, and other cases periodic only",
+                boundary.kind
+            ));
+        }
     }
     if config.parallel.kind == "mpi" && !cfg!(feature = "mpi") {
         return Err("run: MPI case requires building wasl-cli with --features mpi".into());

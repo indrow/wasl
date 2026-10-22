@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 
 int main() {
   std::cout << "Wasl CPU toolchain ready; P2 line modes: " << wasl::line_mode_count(2) << '\n';

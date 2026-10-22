@@ -5,10 +5,10 @@
 #include <vector>
 
 #include "wasl/basis/dubiner_triangle.hpp"
-#include "wasl/basis/reference_element.hpp"
+#include "wasl/basis/mode_count.hpp"
 #include "wasl/limiting/weno/candidate_transform.hpp"
 #include "wasl/limiting/weno/simple_weno.hpp"
-#include "wasl/quadrature/triangle.hpp"
+#include "wasl/quadrature/triangle_volume_rule.hpp"
 
 namespace {
 

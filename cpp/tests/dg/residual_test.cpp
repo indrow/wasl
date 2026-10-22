@@ -12,8 +12,9 @@
 #include <cstddef>
 #include <vector>
 
-#include "wasl/dg/residual_operator.hpp"
-#include "wasl/mesh/line_mesh.hpp"
+#include "wasl/dg/scalar_advection/line_residual.hpp"
+#include "wasl/mesh/line/build_line_mesh.hpp"
+#include "wasl/mesh/line/line_mesh.hpp"
 
 namespace {
 

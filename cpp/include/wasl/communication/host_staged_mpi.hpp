@@ -1,15 +1,12 @@
 // Host-staged nonblocking MPI halo exchange over a prepared-mesh partition.
 //
-// This is the production transport behind the schedule and pack/unpack that
-// halo_exchange.hpp describes (ARCHITECTURE.md). One MPI rank owns one partition of
-// elements (ARCHITECTURE.md). Each stage this rank posts nonblocking receives, packs
-// and posts nonblocking sends for its owned elements that peers import, then
-// does local work while the exchange is in flight, and finally unpacks the
-// received ghost coefficients.
+// The production transport for halo_schedule.hpp (ARCHITECTURE.md). Each stage
+// posts nonblocking receives, packs and posts nonblocking sends of owned
+// elements that peers import, lets the caller do local work while the exchange
+// is in flight, and finally unpacks the received ghost coefficients.
 //
-// The header is MPI-only: it includes <mpi.h> and is compiled solely into
-// targets built with WASL_ENABLE_MPI. The core wasl_core library stays MPI-free,
-// so the in-process oracle (halo_exchange.hpp) remains the CPU-CI path.
+// The header is MPI-only and is compiled solely into targets built with
+// WASL_ENABLE_MPI; in_process_halo_exchange.hpp remains the CPU-CI oracle.
 //
 // Coefficient layout is U[variable][mode][element] with the element axis laid
 // out as owned elements then ghost elements, matching the oracle. The residual
@@ -26,7 +23,7 @@
 
 #include <mpi.h>
 
-#include "wasl/communication/halo_exchange.hpp"
+#include "wasl/communication/halo_schedule.hpp"
 
 namespace wasl {
 

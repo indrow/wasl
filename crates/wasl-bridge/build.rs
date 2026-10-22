@@ -1,26 +1,41 @@
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+// The bridge compiles the whole C++ core except the standalone smoke program.
+const CORE_SOURCE_DIR: &str = "../../cpp/src";
+const EXCLUDED_SOURCES: &[&str] = &["smoke.cpp"];
+
+fn core_sources(directory: &Path) -> Vec<PathBuf> {
+    let mut sources = Vec::new();
+    let mut entries: Vec<PathBuf> = fs::read_dir(directory)
+        .unwrap_or_else(|error| panic!("wasl-bridge: cannot read {}: {error}", directory.display()))
+        .map(|entry| entry.expect("wasl-bridge: unreadable source entry").path())
+        .collect();
+    entries.sort();
+    for path in entries {
+        if path.is_dir() {
+            sources.extend(core_sources(&path));
+        } else if path.extension().is_some_and(|extension| extension == "cpp")
+            && !EXCLUDED_SOURCES
+                .iter()
+                .any(|name| path.file_name().is_some_and(|file| file == *name))
+        {
+            sources.push(path);
+        }
+    }
+    sources
+}
 
 fn main() {
     let mut build = cxx_build::bridge("src/lib.rs");
     build
         .file("src/bridge.cpp")
-        .file("../../cpp/src/case/coefficient_layout.cpp")
-        .file("../../cpp/src/case/euler_case.cpp")
-        .file("../../cpp/src/case/initial_state.cpp")
-        .file("../../cpp/src/case/periodic_boundary.cpp")
-        .file("../../cpp/src/case/prepared_mesh.cpp")
-        .file("../../cpp/src/case/scalar_advection_case.cpp")
-        .file("../../cpp/src/case/simulation.cpp")
-        .file("../../cpp/src/case/validation.cpp")
-        .file("../../cpp/src/mesh/msh_reader.cpp")
-        .file("../../cpp/src/mesh/line_mesh.cpp")
-        .file("../../cpp/src/mesh/partition.cpp")
-        .file("../../cpp/src/communication/halo_exchange.cpp")
-        .file("../../cpp/src/mesh/triangle_mesh.cpp")
-        .file("../../cpp/src/io/case_io.cpp")
+        .files(core_sources(Path::new(CORE_SOURCE_DIR)))
         .include("include")
         .include("../../cpp/include")
+        .include(CORE_SOURCE_DIR)
         .std("c++20");
 
     let mpi = env::var_os("CARGO_FEATURE_MPI").is_some();
@@ -97,16 +112,8 @@ fn main() {
     println!("cargo:rerun-if-changed=src/ops.rs");
     println!("cargo:rerun-if-changed=src/bridge.cpp");
     println!("cargo:rerun-if-changed=include/bridge.hpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/io/case_io.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/coefficient_layout.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/euler_case.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/initial_state.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/periodic_boundary.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/prepared_mesh.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/scalar_advection_case.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/simulation.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/case/validation.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/mesh/partition.cpp");
-    println!("cargo:rerun-if-changed=../../cpp/src/communication/halo_exchange.cpp");
+    // A directory path makes Cargo rescan every file below it.
+    println!("cargo:rerun-if-changed={CORE_SOURCE_DIR}");
+    println!("cargo:rerun-if-changed=../../cpp/include");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_MPI");
 }
