@@ -1,0 +1,6 @@
+format_version = 1
+
+[equation]
+type = "scalar_advection"
+dimensions = 1
+velocity = [1.0]

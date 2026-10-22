@@ -1,0 +1,6 @@
+.git
+build
+target
+cases/**/results
+*.h5
+*.msh

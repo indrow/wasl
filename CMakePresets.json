@@ -1,0 +1,62 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "cpu-debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "cpu-mpi",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "WASL_ENABLE_MPI": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "cpu-debug",
+      "configurePreset": "cpu-debug"
+    },
+    {
+      "name": "cpu-mpi",
+      "configurePreset": "cpu-mpi"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "cpu-debug",
+      "configurePreset": "cpu-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cpu-mpi",
+      "configurePreset": "cpu-mpi",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

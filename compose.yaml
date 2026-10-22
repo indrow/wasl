@@ -1,0 +1,10 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: ["bash", "-lc", "cmake --preset cpu-debug && cmake --build --preset cpu-debug && ctest --preset cpu-debug && cargo test --workspace"]
+

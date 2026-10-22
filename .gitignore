@@ -1,0 +1,8 @@
+/build/
+/target/
+/.cache/
+/.vscode/
+*.h5
+*.msh
+cases/**/results/
+compile_commands.json

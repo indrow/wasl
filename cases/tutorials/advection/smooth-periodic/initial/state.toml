@@ -1,0 +1,12 @@
+format_version = 1
+representation = "scalar"
+
+[[regions]]
+name = "smooth-wave"
+where = "sine"
+value = 1.0
+
+[[regions]]
+name = "background"
+where = "default"
+value = 0.0

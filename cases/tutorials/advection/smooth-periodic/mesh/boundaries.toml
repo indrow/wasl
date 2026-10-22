@@ -1,0 +1,9 @@
+format_version = 1
+
+[boundaries.left]
+type = "periodic"
+pair = "right"
+
+[boundaries.right]
+type = "periodic"
+pair = "left"

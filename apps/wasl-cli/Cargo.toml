@@ -1,0 +1,10 @@
+[package]
+name = "wasl-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasl-bridge = { path = "../../crates/wasl-bridge" }
+
+[features]
+mpi = ["wasl-bridge/mpi"]

@@ -1,0 +1,19 @@
+[package]
+name = "wasl-bridge"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+mpi = []
+
+[dependencies]
+cxx = "=1.0.136"
+indexmap = "=2.2.3"
+serde = { version = "=1.0.197", features = ["derive"] }
+toml = "=0.8.10"
+
+[build-dependencies]
+cxx-build = "=1.0.136"
